@@ -1,4 +1,5 @@
 import re
+from pprint import pprint
 from maya import cmds
 
 from .ui import utils
@@ -17,6 +18,18 @@ def get():
     
 # ----------------------------------------------------------------------------
 
+def fuzzyfinder(user_input, collection):
+    suggestions = []
+    pattern = '.*?'.join(user_input)    # Converts 'djm' to 'd.*?j.*?m'
+    regex = re.compile(pattern)         # Compiles a regex.
+    for item in collection:
+        match = regex.search(item)      # Checks if the current item matches the regex.
+        if match:
+            suggestions.append((len(match.group()), match.start(), item))
+    return [x for _, _, x in sorted(suggestions)]
+
+# ----------------------------------------------------------------------------
+
 def filter(search):
     """
     The search string is processed find matches within the commands variable.
@@ -26,39 +39,59 @@ def filter(search):
     :rtype: list
     """
     matches = []
-    regexes = []
+    # regexes = []
     
-    # generate regex
-    if search:
-        for p in search.split():
-            regexes.append(
-                re.compile(
-                    r'.*' + 
-                    re.sub( r'\W', '.*', p.strip() ) + 
-                    r'.*'
-                )    
-            )
+    # # generate regex
+    # if search:
+    #     for p in search.split():
+    #         regexes.append(
+    #             re.compile(
+    #                 r'.*' + 
+    #                 re.sub( r'\W', '.*', p.strip() ) + 
+    #                 r'.*'
+    #             )    
+    #         )
 
-    # filter commands
+    # # filter commands
+    # for k, v in COMMANDS.iteritems():
+    #     if v.get("pin"):
+    #         matches.append(v)
+    #         continue
+            
+    #     states = []
+    #     for regex in regexes:
+    #         states.append( 
+    #             re.match(
+    #                 regex.pattern, 
+    #                 v.get("search"), 
+    #                 re.I
+    #             )
+    #         )
+
+    #     if regexes and None not in states:
+    #         matches.append(v)
+
+    # matches.sort(key=lambda x:(-x["pin"], x["hierarchy"]))
+
+    # filter commands in a fuzzy way
+    vkMap = {}
     for k, v in COMMANDS.iteritems():
         if v.get("pin"):
             matches.append(v)
             continue
-            
-        states = []
-        for regex in regexes:
-            states.append( 
-                re.match(
-                    regex.pattern, 
-                    v.get("search"), 
-                    re.I
-                )
-            )
-            
-        if regexes and None not in states:
-            matches.append(v)
+        elif search:
+            searchStr = v.get("search")
+            if searchStr:
+                vkMap[searchStr] = v
+    if search:
+        matchedKeys = fuzzyfinder(search, vkMap.keys())
+        # print '\n\n\n'
+        # pprint(matchedKeys)
+        matchedValues = [vkMap[k] for k in matchedKeys]
+        if matchedValues:
+            matches.extend(matchedValues)
 
-    matches.sort(key=lambda x:(-x["pin"], x["hierarchy"]))
+    # pprint(matches)
     return matches
 
 # ----------------------------------------------------------------------------  
